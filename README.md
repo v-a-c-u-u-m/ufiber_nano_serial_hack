@@ -16,6 +16,11 @@ pip3 install paramiko scp
 
 
 
+## Tested
+Firmware versions: v2.1.1
+
+
+
 ## Used links
 https://blog.onedefence.com/changing-the-gpon-serial-on-the-ubiquiti-ufiber-nano-g-part-two/
 
