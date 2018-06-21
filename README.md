@@ -18,5 +18,7 @@ pip3 install paramiko scp
 
 ## Used links
 https://blog.onedefence.com/changing-the-gpon-serial-on-the-ubiquiti-ufiber-nano-g-part-two/
+
 https://github.com/palmerc/AESCrypt2
+
 https://github.com/dylangerdaly/UFiber-Nano-G-Playpen
