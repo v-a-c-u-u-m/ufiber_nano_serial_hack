@@ -6,7 +6,6 @@ from getpass import getpass, getuser
 from hashlib import sha256
 from struct import pack, unpack
 from binascii import hexlify, unhexlify
-from ctypes import c_ulong
 
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
@@ -277,7 +276,7 @@ def hack(host, port, username, serial):
 
 
 if __name__ == '__main__':
-    version = '0.1'
+    version = '0.2'
 
     colors = ['','']
     if sys.platform[0:3] == 'lin':
@@ -298,7 +297,7 @@ if __name__ == '__main__':
 
                         version {}
 {}'''.format(colors[0], version, colors[1])
-    usage  = './ubi.py -r 192.168.1.1 -s 48:57:54:43:7a:7a:7a:7a'
+    usage  = './ubi_serial_hack.py -r 192.168.1.1 -s 48:57:54:43:7a:7a:7a:7a'
 
     parser = ArgumentParser(description=banner,
                             formatter_class=RawTextHelpFormatter,
