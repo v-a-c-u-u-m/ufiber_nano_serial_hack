@@ -205,7 +205,7 @@ def nvram_info(mtdblock3):
     log.info('checksum:         {}'.format(  hex(int.from_bytes(checksum, byteorder='big'))  ))
     return board_id.decode()
 
-def nvram_upgrade(mtdblock3, s):
+def nvram_upgrade(mtdblock3, s, mac_addr):
     nvram_block = mtdblock3[1408:1408+1024]
     gpon_serial_number_vendor_id = nvram_block[300:304] # 4 bytes
     gpon_serial_number_serial_id = nvram_block[304:313] # 8 bytes + b'\x00'
@@ -221,7 +221,16 @@ def nvram_upgrade(mtdblock3, s):
         log.error('Invalid vendor_id')
         sys.exit(0)
     nulls = b'\x00\x00\x00\x00'
-    nvram_block_new = nvram_block[:300] + gpon_sn_vendor_id + gpon_sn_serial_id + nvram_block[313:-4] + nulls
+    if mac_addr:
+        mac_addr = mac_addr.replace('-','').replace(':','').replace('\\x','').replace('x','').upper()
+        mac_length = len(mac_addr)
+        if mac_length != 12:
+            log.error('Invalid mac address length')
+            sys.exit(0)
+        mac_addr = unhexlify(mac_addr)
+        nvram_block_new = nvram_block[:288] + mac_addr + nvram_block[294:300] + gpon_sn_vendor_id + gpon_sn_serial_id + nvram_block[313:-4] + nulls
+    else:
+        nvram_block_new = nvram_block[:300] + gpon_sn_vendor_id + gpon_sn_serial_id + nvram_block[313:-4] + nulls
     checksum = get_crc32(nvram_block_new).to_bytes(4, byteorder='big')
     nvram_block_new = nvram_block_new[:-4] + checksum
     mtdblock3_new = mtdblock3[:1408] + nvram_block_new + mtdblock3[1408+1024:]
@@ -231,7 +240,7 @@ def nvram_upgrade(mtdblock3, s):
 
 
 
-def hack(host, port, username, serial):
+def hack(host, port, username, serial, mac_addr):
     ssh = ssh_connection(host, port, username)
     ssh_exec(ssh, 'dd if=/dev/mtdblock3 of=/tmp/mtdblock3.BIN')
 
@@ -249,7 +258,7 @@ def hack(host, port, username, serial):
         log.error('Abnormal termination')
         sys.exit(0)
 
-    mtdblock3_new = nvram_upgrade(mtdblock3, serial)
+    mtdblock3_new = nvram_upgrade(mtdblock3, serial, mac_addr)
     hashsum = sha256()
     hashsum.update(mtdblock3_new)
     log.success('Built mtdblock3_new.BIN')
@@ -276,7 +285,7 @@ def hack(host, port, username, serial):
 
 
 if __name__ == '__main__':
-    version = '0.2'
+    version = '0.3'
 
     colors = ['','']
     if sys.platform[0:3] == 'lin':
@@ -306,6 +315,7 @@ if __name__ == '__main__':
     parser.add_argument("-r","-R",'--host', dest='host', type=str, default=None, help="host [127.0.0.1]")
     parser.add_argument("-u","-U",'--username', dest='username', type=str, default='ubnt', help="username")
     parser.add_argument("-s","-S",'--sn','--serial', dest='serial', type=str, default=None, help="serial")
+    parser.add_argument("-m","-M",'--mac','--mac', dest='mac', type=str, default=None, help="Base MAC Addr")
     parser.add_argument("-p","-P",'--port', dest='port', type=int, default=22, help="port [22]")
     parser.add_argument("-v","-V",'--version', dest='version', action='store_true', help="version flag")
 
@@ -316,7 +326,7 @@ if __name__ == '__main__':
         print('ubi_serial_hack version {}'.format(version))
         sys.exit(0)
     elif args.host and args.serial:
-        hack(args.host, args.port, args.username, args.serial)
+        hack(args.host, args.port, args.username, args.serial, args.mac)
     else:
         print('usage: {}'.format(usage))
         sys.exit(0)
