@@ -2,7 +2,7 @@
 import sys
 from select import select
 from argparse import ArgumentParser, RawTextHelpFormatter
-from getpass import getpass, getuser
+from getpass import getpass
 from hashlib import sha256
 from struct import pack, unpack
 from binascii import hexlify, unhexlify
