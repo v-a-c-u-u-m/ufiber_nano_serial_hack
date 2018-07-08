@@ -285,7 +285,7 @@ def hack(host, port, username, serial, mac_addr):
 
 
 if __name__ == '__main__':
-    version = '0.3'
+    version = '0.4'
 
     colors = ['','']
     if sys.platform[0:3] == 'lin':
@@ -306,7 +306,8 @@ if __name__ == '__main__':
 
                         version {}
 {}'''.format(colors[0], version, colors[1])
-    usage  = './ubi_serial_hack.py -r 192.168.1.1 -s 48:57:54:43:7a:7a:7a:7a'
+    usage  = '''./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30
+./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30 --mac 11:22:33:44:55:66'''
 
     parser = ArgumentParser(description=banner,
                             formatter_class=RawTextHelpFormatter,
@@ -328,5 +329,5 @@ if __name__ == '__main__':
     elif args.host and args.serial:
         hack(args.host, args.port, args.username, args.serial, args.mac)
     else:
-        print('usage: {}'.format(usage))
+        print('usage:\n{}'.format(usage))
         sys.exit(0)
