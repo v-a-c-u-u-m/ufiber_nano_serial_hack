@@ -14,6 +14,11 @@ pip3 install paramiko scp
 ./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30
 ```
 
+Change your serial and MAC
+```sh
+./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30 --mac 11:22:33:44:55:66
+```
+
 
 
 ## Tested
