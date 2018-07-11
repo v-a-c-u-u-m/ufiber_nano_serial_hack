@@ -1,5 +1,5 @@
 # UFiber Nano G - Serial Hack
-https://community.ubnt.com/t5/UFiber-GPON/UFiber-Nano-G-GPON-Huawei-HG8245-Configuration
+https://community.ubnt.com/t5/UFiber-GPON/UFiber-Nano-G-GPON-Huawei-HG8245-Configuration/m-p/2139059#M511
 
 
 
