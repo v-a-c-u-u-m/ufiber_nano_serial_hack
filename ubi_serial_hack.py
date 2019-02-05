@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import sys
+from os.path import exists
 from select import select
 from argparse import ArgumentParser, RawTextHelpFormatter
 from getpass import getpass
@@ -240,22 +241,29 @@ def nvram_upgrade(mtdblock3, s, mac_addr):
 
 
 
-def hack(host, port, username, serial, mac_addr):
-    ssh = ssh_connection(host, port, username)
-    ssh_exec(ssh, 'dd if=/dev/mtdblock3 of=/tmp/mtdblock3.BIN')
+def hack(host, port, username, serial, mac_addr, nossh, insecure):
+    if not nossh:
+        ssh = ssh_connection(host, port, username)
+        ssh_exec(ssh, 'dd if=/dev/mtdblock3 of=/tmp/mtdblock3.BIN')
 
-    with SCPClient(ssh.get_transport()) as scp:
-        scp.get('/tmp/mtdblock3.BIN', 'mtdblock3.BIN')
-    log.success('Downloaded mtdblock3.BIN')
+        with SCPClient(ssh.get_transport()) as scp:
+            scp.get('/tmp/mtdblock3.BIN', 'mtdblock3.BIN')
+        log.success('Downloaded mtdblock3.BIN')
+
+    if not exists('mtdblock3.BIN'):
+        log.error('File not found')
+        sys.exit(0)
 
     with open('mtdblock3.BIN', 'rb') as f:
         mtdblock3 = f.read()
+
     hashsum = sha256()
     hashsum.update(mtdblock3)
     log.care('Hashsum of mtdblock3.BIN (sha256): {}'.format(hashsum.hexdigest()))
     board_id = nvram_info(mtdblock3)
-    if board_id != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00':
+    if (not insecure) and (board_id != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00'):
         log.error('Abnormal termination')
+        log.care('Your board_id is {}. You can use the --insecure flag at your own risk.'.format(board_id))
         sys.exit(0)
 
     mtdblock3_new = nvram_upgrade(mtdblock3, serial, mac_addr)
@@ -264,28 +272,29 @@ def hack(host, port, username, serial, mac_addr):
     log.success('Built mtdblock3_new.BIN')
     log.care('Hashsum of mtdblock3_new.BIN (sha256): {}'.format(hashsum.hexdigest()))
     board_id_new = nvram_info(mtdblock3_new)
-    if board_id_new != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00':
+    if (not insecure) and (board_id != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00'):
         log.error('Abnormal termination (debug)')
         sys.exit(0)
 
     with open('mtdblock3_new.BIN', 'wb') as f:
         f.write(mtdblock3_new)
 
-    with SCPClient(ssh.get_transport()) as scp:
-        scp.put('mtdblock3_new.BIN', '/tmp/mtdblock3_new.BIN')
+    if not nossh:
+        with SCPClient(ssh.get_transport()) as scp:
+            scp.put('mtdblock3_new.BIN', '/tmp/mtdblock3_new.BIN')
 
-    ssh_exec(ssh, 'dd if=/tmp/mtdblock3_new.BIN of=/dev/mtdblock3')
-    log.success('Uploaded mtdblock3_new.BIN')
+        ssh_exec(ssh, 'dd if=/tmp/mtdblock3_new.BIN of=/dev/mtdblock3')
+        log.success('Uploaded mtdblock3_new.BIN')
 
-    #ssh_exec(ssh, 'reboot')
-    #log.success('Now the device is rebooting')
+        #ssh_exec(ssh, 'reboot')
+        #log.success('Now the device is rebooting')
 
-    ssh.close()
+        ssh.close()
 
 
 
 if __name__ == '__main__':
-    version = '0.4'
+    version = '0.5'
 
     colors = ['','']
     if sys.platform[0:3] == 'lin':
@@ -307,7 +316,8 @@ if __name__ == '__main__':
                         version {}
 {}'''.format(colors[0], version, colors[1])
     usage  = '''./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30
-./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30 --mac 11:22:33:44:55:66'''
+./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30 --mac 11:22:33:44:55:66
+./ubi_serial_hack.py --serial 48:57:54:43:30:30:30:30 --nossh'''
 
     parser = ArgumentParser(description=banner,
                             formatter_class=RawTextHelpFormatter,
@@ -319,15 +329,16 @@ if __name__ == '__main__':
     parser.add_argument("-m","-M",'--mac','--mac', dest='mac', type=str, default=None, help="Base MAC Addr")
     parser.add_argument("-p","-P",'--port', dest='port', type=int, default=22, help="port [22]")
     parser.add_argument("-v","-V",'--version', dest='version', action='store_true', help="version flag")
+    parser.add_argument('--nossh', dest='nossh', action='store_true', help="nossh flag")
+    parser.add_argument('--insecure', dest='insecure', action='store_true', help="insecure flag")
 
     args = parser.parse_args()
-
 
     if args.version:
         print('ubi_serial_hack version {}'.format(version))
         sys.exit(0)
-    elif args.host and args.serial:
-        hack(args.host, args.port, args.username, args.serial, args.mac)
+    elif (args.nossh and args.serial) or (args.host and args.serial):
+        hack(args.host, args.port, args.username, args.serial, args.mac, args.nossh, args.insecure)
     else:
         print('usage:\n{}'.format(usage))
         sys.exit(0)
