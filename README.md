@@ -32,7 +32,7 @@ Ignoring abnormal termination with unsupported boards.
 
 
 ## Tested
-Firmware versions: v2.1.1
+Firmware versions: v2.1.1, v4.1.0
 
 
 
