@@ -29,10 +29,15 @@ Ignoring abnormal termination with unsupported boards.
 ./ubi_serial_hack.py --insecure --serial 48:57:54:43:30:30:30:30
 ```
 
+Read only from filepath
+```sh
+./ubi_serial_hack.py -f mtdblock3.BIN
+```
+
 
 
 ## Tested
-Firmware versions: v2.1.1, v4.1.0
+Firmware versions: v2.1.1 and v4.1.0
 
 
 
