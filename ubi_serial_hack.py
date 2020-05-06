@@ -238,11 +238,18 @@ def nvram_upgrade(mtdblock3, s, mac_addr):
     return mtdblock3_new
 
 
+def read_only(filepath):
+    with open(filepath, 'rb') as f:
+        mtdblock3 = f.read()
+    hashsum = sha256()
+    hashsum.update(mtdblock3)
+    log.care('Hashsum of mtdblock3.BIN (sha256): {}'.format(hashsum.hexdigest()))
+    board_id = nvram_info(mtdblock3)
+    return board_id
 
 
-
-def hack(host, port, username, serial, mac_addr, nossh, insecure):
-    if not nossh:
+def hack(host, port, username, serial, mac_addr, nossh_flag, insecure_flag, readonly_flag):
+    if not nossh_flag:
         ssh = ssh_connection(host, port, username)
         ssh_exec(ssh, 'dd if=/dev/mtdblock3 of=/tmp/mtdblock3.BIN')
 
@@ -261,7 +268,10 @@ def hack(host, port, username, serial, mac_addr, nossh, insecure):
     hashsum.update(mtdblock3)
     log.care('Hashsum of mtdblock3.BIN (sha256): {}'.format(hashsum.hexdigest()))
     board_id = nvram_info(mtdblock3)
-    if (not insecure) and (board_id != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00'):
+    if readonly_flag:
+        return 0
+
+    if (not insecure_flag) and (board_id != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00'):
         log.error('Abnormal termination')
         log.care('Your board_id is {}. You can use the --insecure flag at your own risk.'.format(board_id))
         sys.exit(0)
@@ -272,14 +282,14 @@ def hack(host, port, username, serial, mac_addr, nossh, insecure):
     log.success('Built mtdblock3_new.BIN')
     log.care('Hashsum of mtdblock3_new.BIN (sha256): {}'.format(hashsum.hexdigest()))
     board_id_new = nvram_info(mtdblock3_new)
-    if (not insecure) and (board_id != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00'):
+    if (not insecure_flag) and (board_id != 'UBNT_SFU\x00\x00\x00\x00\x00\x00\x00\x00'):
         log.error('Abnormal termination (debug)')
         sys.exit(0)
 
     with open('mtdblock3_new.BIN', 'wb') as f:
         f.write(mtdblock3_new)
 
-    if not nossh:
+    if not nossh_flag:
         with SCPClient(ssh.get_transport()) as scp:
             scp.put('mtdblock3_new.BIN', '/tmp/mtdblock3_new.BIN')
 
@@ -290,11 +300,12 @@ def hack(host, port, username, serial, mac_addr, nossh, insecure):
         #log.success('Now the device is rebooting')
 
         ssh.close()
+    return 0
 
 
 
 if __name__ == '__main__':
-    version = '0.5'
+    version = '0.6'
 
     colors = ['','']
     if sys.platform[0:3] == 'lin':
@@ -317,7 +328,8 @@ if __name__ == '__main__':
 {}'''.format(colors[0], version, colors[1])
     usage  = '''./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30
 ./ubi_serial_hack.py -r 192.168.1.1 -p 22 --serial 48:57:54:43:30:30:30:30 --mac 11:22:33:44:55:66
-./ubi_serial_hack.py --serial 48:57:54:43:30:30:30:30 --nossh'''
+./ubi_serial_hack.py --serial 48:57:54:43:30:30:30:30 --nossh
+./ubi_serial_hack.py -r 192.168.1.1 -p 22 --readonly'''
 
     parser = ArgumentParser(description=banner,
                             formatter_class=RawTextHelpFormatter,
@@ -329,16 +341,23 @@ if __name__ == '__main__':
     parser.add_argument("-m","-M",'--mac','--mac', dest='mac', type=str, default=None, help="Base MAC Addr")
     parser.add_argument("-p","-P",'--port', dest='port', type=int, default=22, help="port [22]")
     parser.add_argument("-v","-V",'--version', dest='version', action='store_true', help="version flag")
+    parser.add_argument("-f","-F",'--filepath', dest='file', type=str, default=None, help="mtdblock3.BIN")
     parser.add_argument('--nossh', dest='nossh', action='store_true', help="nossh flag")
     parser.add_argument('--insecure', dest='insecure', action='store_true', help="insecure flag")
+    parser.add_argument('--readonly', dest='readonly', action='store_true', help="readonly flag")
 
     args = parser.parse_args()
 
     if args.version:
         print('ubi_serial_hack version {}'.format(version))
         sys.exit(0)
-    elif (args.nossh and args.serial) or (args.host and args.serial):
-        hack(args.host, args.port, args.username, args.serial, args.mac, args.nossh, args.insecure)
+    elif (args.nossh and args.serial) or (args.host and args.serial) or (args.host and args.readonly):
+        hack(args.host, args.port, args.username, args.serial, args.mac, args.nossh, args.insecure, args.readonly)
+    elif args.file:
+        if exists(args.file):
+            read_only(args.file)
+        else:
+            log.error('Filepath "{}" doesnt exist'.format(args.file))
     else:
         print('usage:\n{}'.format(usage))
         sys.exit(0)
